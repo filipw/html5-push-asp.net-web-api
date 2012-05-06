@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>ASP.NET Web API</title>
+    <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" type="text/css" />
+
+    <style type="text/css">
+        #console {height:200px;width:500px;overflow:auto;border:1px solid #aaa; padding:20px; background: #ccc; margin:20px 0;}
+        input, textarea {padding:5px; color:#222;}
+        #push {width: 400px;}
+        p {margin: 0 0 10px 0;}
+    </style>
+
+    <script src="@Url.Content("~/Scripts/modernizr-2.0.6-development-only.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/knockout.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/knockout.mapping-latest.js")" type="text/javascript"></script>
+
+    <script type="text/javascript">
+        var viewModel = {
+            chatMessages: ko.observableArray([]),
+            chatUsername: ko.observable("")
+        }
+
+        viewModel.newMessage = {
+            username: ko.computed(function () { return viewModel.chatUsername() }),
+            text: ko.observable("")
+        }
+
+        viewModel.resizeChat = function () {
+            $("#console").scrollTop($("#console")[0].scrollHeight);
+        };
+
+        $(document).ready(function () {
+            ko.applyBindings(viewModel);
+
+            $("#pushbtn").click(function () {
+                $.ajax({
+                    url: "http://localhost:49999/api/chat/",
+                    data: JSON.stringify(ko.mapping.toJS(viewModel.newMessage)),
+                    cache: false,
+                    type: 'POST',
+                    dataType: "json",
+                    contentType: 'application/json; charset=utf-8'
+                });
+                viewModel.newMessage.text('');
+                $("#push").val('');
+            });
+
+        });
+
+        if (!!window.EventSource) {
+            var source = new EventSource('http://localhost:49999/api/chat/');
+            source.addEventListener('message', function (e) {
+                console.log(e.data);
+                var json = JSON.parse(e.data);
+                viewModel.chatMessages.push(json);
+            }, false);
+
+            source.addEventListener('open', function (e) {
+              console.log("open!");
+            }, false);
+
+            source.addEventListener('error', function (e) {
+                if (e.readyState == EventSource.CLOSED) {
+                    console.log("error!");
+                }
+            }, false);
+
+        } else {
+            // not supported!
+            console.log("xdR");
+            var xdr = new XDomainRequest();
+            xdr.open("GET", "/api/chat/?" + Math.random());
+            xdr.send();
+            xdr.onload = function () {
+                console.log(xdr);
+                var data = JSON.parse(xdr.responseText);
+                viewModel.chatMessages.push(data);
+            }
+            xdr.onprogress = function () {
+                console.log(xdr.responseText);
+                var data = JSON.parse(xdr.responseText);
+                viewModel.chatMessages.push(data);
+            }
+        }
+    </script>
+
+    <meta name="viewport" content="width=device-width" />
+</head>
+<body>
+    <header>
+        <div class="content-wrapper">       
+            <div class="float-left">
+                <p class="site-title"><a href="/">ASP.NET Web API</a></p>
+            </div>
+        </div>
+    </header>
+    <div id="body">
+        <section class="content-wrapper main-content clear-fix">
+
+                <div id="console" data-bind="template: {name: 'chatMessageTemplate', foreach: chatMessages, afterAdd: resizeChat}">
+                </div>
+                
+                <label for="username">Enter username to start chatting</label>
+                <input type="text" id="username" data-bind="value: chatUsername" />
+
+                <div id="chatControl" value="send" data-bind="visible: chatUsername().length > 0">
+                    <textarea type="text" id="push" data-bind="value: newMessage.text"></textarea>
+                    <button id="pushbtn">Send</button>
+                </div>
+
+                <script type="text/html" id="chatMessageTemplate">
+                    <p><small data-bind="text: dt"></small><br/>
+                    <strong data-bind="text: username"></strong>: <i data-bind="text: text"></i></p>
+                </script>
+
+        </section>
+    </div>
+</body>
+</html>
