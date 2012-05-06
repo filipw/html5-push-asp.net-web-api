@@ -20,7 +20,6 @@ namespace Strathweb.HTML5push.Controllers
 
         public HttpResponseMessage Get(HttpRequestMessage request)
         {
-           //request.Headers.AcceptEncoding.Clear();
            HttpResponseMessage response = request.CreateResponse();
            response.Content = new PushStreamContent(OnStreamAvailable, "text/event-stream");
            return response;
